@@ -748,6 +748,7 @@ export async function getWaitForNSubmissionsPromise(repCycleEthers, rootHash, nN
       reject(new Error("Timeout while waiting for 12 hash submissions"));
     }, 60 * 1000);
   });
+}
 
 export async function encodeTxData(colony, functionName, args) {
   const convertedArgs = [];
