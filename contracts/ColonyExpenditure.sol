@@ -169,6 +169,21 @@ contract ColonyExpenditure is ColonyStorage {
     expenditureSlots[_id][_slot].claimDelay = _claimDelay;
   }
 
+  function setExpenditureState(
+    uint256 _permissionDomainId,
+    uint256 _childSkillIndex,
+    uint256 _id,
+    uint256 _slot,
+    bool[] memory _mask,
+    bytes32[] memory _keys,
+    bytes32 _value
+  )
+    public
+    stoppable
+  {
+
+  }
+
   // Public view functions
 
   function getExpenditureCount() public view returns (uint256) {
