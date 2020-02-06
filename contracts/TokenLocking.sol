@@ -46,12 +46,12 @@ contract TokenLocking is TokenLockingStorage, DSMath { // ignore-swc-123
     _;
   }
 
-  // Prevent reputation miners from withdrawing stake during the mining process.
-  modifier hashNotSubmitted(address _token) {
+  // Prevent those involved in a mining cycle withdrawing stake during the mining process.
+  modifier notInvolvedInMiningCycle(address _token) {
     address clnyToken = IMetaColony(IColonyNetwork(colonyNetwork).getMetaColony()).getToken();
     if (_token == clnyToken) {
-      bytes32 submissionHash = IReputationMiningCycle(IColonyNetwork(colonyNetwork).getReputationMiningCycle(true)).getReputationHashSubmission(msg.sender).proposedNewRootHash;
-      require(submissionHash == 0x0, "colony-token-locking-hash-submitted");
+      bool involved = IReputationMiningCycle(IColonyNetwork(colonyNetwork).getReputationMiningCycle(true)).userInvolvedInMiningCycle(msg.sender);
+      require(involved != true, "colony-token-locking-hash-submitted");
     }
     _;
   }
@@ -123,7 +123,7 @@ contract TokenLocking is TokenLockingStorage, DSMath { // ignore-swc-123
 
   function withdraw(address _token, uint256 _amount) public
   tokenNotLocked(_token)
-  hashNotSubmitted(_token)
+  notInvolvedInMiningCycle(_token)
   {
     require(_amount > 0, "colony-token-locking-invalid-amount");
 
@@ -134,7 +134,7 @@ contract TokenLocking is TokenLockingStorage, DSMath { // ignore-swc-123
     emit UserTokenWithdrawn(_token, msg.sender, _amount);
   }
 
-  function punishStakers(address[] memory _stakers, address _beneficiary, uint256 _amount) public onlyReputationMiningCycle {
+  function punishStakers(address[] memory _stakers, uint256 _amount) public onlyReputationMiningCycle {
     address clnyToken = IMetaColony(IColonyNetwork(colonyNetwork).getMetaColony()).getToken();
     uint256 lostStake;
     // Passing an array so that we don't incur the EtherRouter overhead for each staker if we looped over
@@ -142,11 +142,21 @@ contract TokenLocking is TokenLockingStorage, DSMath { // ignore-swc-123
     for (uint256 i = 0; i < _stakers.length; i++) {
       lostStake = min(userLocks[clnyToken][_stakers[i]].balance, _amount);
       userLocks[clnyToken][_stakers[i]].balance = sub(userLocks[clnyToken][_stakers[i]].balance, lostStake);
-      userLocks[clnyToken][_beneficiary].balance = add(userLocks[clnyToken][_beneficiary].balance, lostStake);
       // TODO: Lose rep?
 
-      emit ReputationMinerPenalised(_stakers[i], _beneficiary, lostStake);
+      emit ReputationMinerPenalised(_stakers[i], lostStake);
     }
+  }
+
+  function reward(address _recipient, uint256 _amount) public onlyReputationMiningCycle {
+    address clnyToken = IMetaColony(IColonyNetwork(colonyNetwork).getMetaColony()).getToken();
+    // TODO: Gain rep?
+    userLocks[clnyToken][_recipient].balance = add(userLocks[clnyToken][_recipient].balance, _amount);
+  }
+
+  function burn(uint256 _amount) public onlyReputationMiningCycle {
+    address clnyToken = IMetaColony(IColonyNetwork(colonyNetwork).getMetaColony()).getToken();
+    ERC20Extended(clnyToken).burn(_amount);
   }
 
   function getTotalLockCount(address _token) public view returns (uint256) {

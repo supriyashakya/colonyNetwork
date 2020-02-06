@@ -7,6 +7,19 @@ order: 5
   
 ## Interface Methods
 
+### `burn`
+
+Function called to burn CLNY tokens held by TokenLocking.
+
+*Note: While public, it can only be called successfully by the current ReputationMiningCycle.*
+
+**Parameters**
+
+|Name|Type|Description|
+|---|---|---|
+|_amount|uint256|Amount of CLNY to burn
+
+
 ### `deposit`
 
 Deposit `_amount` of colony tokens. Can only be called if user tokens are not locked. Before calling this function user has to allow that their tokens can be transferred by token locking contract.
@@ -99,7 +112,7 @@ Locks everyones' tokens on `_token` address.
 
 ### `punishStakers`
 
-Function called to punish people who staked against a new reputation root hash that turned out to be incorrect.
+Function called to punish people who staked CLNY against a new reputation root hash that turned out to be incorrect.
 
 *Note: While public, it can only be called successfully by the current ReputationMiningCycle.*
 
@@ -108,8 +121,21 @@ Function called to punish people who staked against a new reputation root hash t
 |Name|Type|Description|
 |---|---|---|
 |_stakers|address[]|Array of the addresses of stakers to punish
-|_beneficiary|address|Address of beneficiary to receive forfeited stake
-|_amount|uint256|Amount of stake to slash
+|_amount|uint256|Amount of stake to slash (each)
+
+
+### `reward`
+
+Function called to reward people during reputation mining disputes in CLNY.
+
+*Note: While public, it can only be called successfully by the current ReputationMiningCycle.*
+
+**Parameters**
+
+|Name|Type|Description|
+|---|---|---|
+|_recipient|address|The address to reward
+|_amount|uint256|Amount of CLNY to award
 
 
 ### `setColonyNetwork`

@@ -60,12 +60,23 @@ contract ITokenLocking is TokenLockingDataTypes {
   /// @param _amount Amount to withdraw
   function withdraw(address _token, uint256 _amount) public;
 
-  /// @notice Function called to punish people who staked against a new reputation root hash that turned out to be incorrect.
+  /// @notice Function called to punish people who staked CLNY against a new reputation root hash that turned out to be incorrect.
   /// @dev While public, it can only be called successfully by the current ReputationMiningCycle.
   /// @param _stakers Array of the addresses of stakers to punish
-  /// @param _beneficiary Address of beneficiary to receive forfeited stake
-  /// @param _amount Amount of stake to slash
-  function punishStakers(address[] memory _stakers, address _beneficiary, uint256 _amount) public;
+  /// @param _amount Amount of stake to slash (each)
+  function punishStakers(address[] memory _stakers, uint256 _amount) public;
+
+  /// @notice Function called to reward people during reputation mining disputes in CLNY.
+  /// @dev While public, it can only be called successfully by the current ReputationMiningCycle.
+  /// @dev These tokens will not be able to be withdrawn until the current cycle is completed.
+  /// @param _recipient The address to reward
+  /// @param _amount Amount of CLNY to award
+  function reward(address _recipient, uint256 _amount) public;
+
+  /// @notice Function called to burn CLNY tokens held by TokenLocking.
+  /// @dev While public, it can only be called successfully by the current ReputationMiningCycle.
+  /// @param _amount Amount of CLNY to burn
+  function burn(uint256 _amount) public;
 
   /// @notice Get global lock count for a specific token.
   /// @param _token Address of the token
