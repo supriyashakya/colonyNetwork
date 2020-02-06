@@ -291,7 +291,7 @@ contract("Token Locking", addresses => {
 
     it('should not allow "punishStakers" to be called from an account that is not not reputationMiningCycle', async () => {
       await checkErrorRevert(
-        tokenLocking.punishStakers([addresses[0], addresses[1]], ethers.constants.AddressZero, MIN_STAKE),
+        tokenLocking.punishStakers([addresses[0], addresses[1]], MIN_STAKE),
         "colony-token-locking-sender-not-reputation-mining-cycle"
       );
     });
