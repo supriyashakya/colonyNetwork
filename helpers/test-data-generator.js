@@ -59,6 +59,38 @@ export async function makeTask({ colonyNetwork, colony, hash = SPECIFICATION_HAS
   return logs.filter((log) => log.event === "TaskAdded")[0].args.taskId;
 }
 
+export async function setPayouts({ colony, taskId, tokenAddress, managerPayout, evaluatorPayout, workerPayout, manager }) {
+  const accounts = await web3GetAccounts();
+  manager = manager || accounts[0]; // eslint-disable-line no-param-reassign
+
+  await executeSignedTaskChange({
+    colony,
+    taskId,
+    functionName: "setTaskManagerPayout",
+    signers: [manager],
+    sigTypes: [0],
+    args: [taskId, tokenAddress, managerPayout]
+  });
+
+  await executeSignedTaskChange({
+    colony,
+    taskId,
+    functionName: "setTaskEvaluatorPayout",
+    signers: [manager],
+    sigTypes: [0],
+    args: [taskId, tokenAddress, evaluatorPayout]
+  });
+
+  await executeSignedTaskChange({
+    colony,
+    taskId,
+    functionName: "setTaskWorkerPayout",
+    signers: [manager],
+    sigTypes: [0],
+    args: [taskId, tokenAddress, workerPayout]
+  });
+}
+
 export async function assignRoles({ colony, taskId, manager, evaluator, worker }) {
   if (evaluator && manager !== evaluator) {
     await executeSignedTaskChange({
@@ -154,7 +186,8 @@ export async function setupFundedTask({
   const childSkillIndex = await getChildSkillIndex(colonyNetwork, colony, 1, task.domainId);
   await colony.setFundingRole(1, 0, manager, 1, true);
   await colony.moveFundsBetweenPots(1, 0, childSkillIndex, 1, task.fundingPotId, totalPayouts, tokenAddress, { from: manager });
-  await colony.setAllTaskPayouts(taskId, tokenAddress, managerPayout, evaluatorPayout, workerPayout, { from: manager });
+
+  await setPayouts({ colony, taskId, tokenAddress, managerPayout, evaluatorPayout, workerPayout, manager });
   await assignRoles({ colony, taskId, manager, evaluator, worker });
 
   return taskId;
@@ -372,13 +405,18 @@ export async function setupRandomColony(colonyNetwork) {
   const token = await Token.new(...tokenArgs);
   await token.unlock();
 
-  const { logs } = await colonyNetwork.createColony(token.address, 0, "", "", false);
-  const { colonyAddress } = logs[0].args;
-  const colony = await IColony.at(colonyAddress);
+  const colony = await setupColony(colonyNetwork, token.address);
 
   const tokenLockingAddress = await colonyNetwork.getTokenLocking();
   const tokenAuthority = await TokenAuthority.new(token.address, colony.address, [tokenLockingAddress]);
   await token.setAuthority(tokenAuthority.address);
 
   return { colony, token };
+}
+
+export async function setupColony(colonyNetwork, tokenAddress) {
+  const { logs } = await colonyNetwork.createColony(tokenAddress, 0, "", "", false);
+  const { colonyAddress } = logs[0].args;
+  const colony = await IColony.at(colonyAddress);
+  return colony;
 }

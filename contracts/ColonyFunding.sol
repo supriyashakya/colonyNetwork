@@ -38,37 +38,6 @@ contract ColonyFunding is ColonyStorage, PatriciaTreeProofs { // ignore-swc-123
     emit TaskPayoutSet(_id, TaskRole.Worker, _token, _amount);
   }
 
-  function setAllTaskPayouts(
-    uint256 _id,
-    address _token,
-    uint256 _managerAmount,
-    uint256 _evaluatorAmount,
-    uint256 _workerAmount
-  )
-  public
-  stoppable
-  confirmTaskRoleIdentity(_id, TaskRole.Manager)
-  {
-    Task storage task = tasks[_id];
-    address manager = task.roles[uint8(TaskRole.Manager)].user;
-    address evaluator = task.roles[uint8(TaskRole.Evaluator)].user;
-    address worker = task.roles[uint8(TaskRole.Worker)].user;
-
-    require(
-      evaluator == manager ||
-      evaluator == address(0x0),
-      "colony-funding-evaluator-already-set");
-
-    require(
-      worker == manager ||
-      worker == address(0x0),
-      "colony-funding-worker-already-set");
-
-    this.setTaskManagerPayout(_id, _token, _managerAmount);
-    this.setTaskEvaluatorPayout(_id, _token, _evaluatorAmount);
-    this.setTaskWorkerPayout(_id, _token, _workerAmount);
-  }
-
   // To get all payouts for a task iterate over roles.length
   function getTaskPayout(uint256 _id, uint8 _role, address _token) public view returns (uint256) {
     Task storage task = tasks[_id];

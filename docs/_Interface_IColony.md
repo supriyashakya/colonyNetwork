@@ -899,23 +899,6 @@ Set new colony admin role. Can be called by root role or architecture role.
 |_setTo|bool|The state of the role permission (true assign the permission, false revokes it)
 
 
-### `setAllTaskPayouts`
-
-Set `_token` payout for all roles in task `_id` to the respective amounts.
-
-*Note: Can only call if evaluator and worker are unassigned or manager, otherwise need signature.*
-
-**Parameters**
-
-|Name|Type|Description|
-|---|---|---|
-|_id|uint256|Id of the task
-|_token|address|Address of the token, `0x0` value indicates Ether
-|_managerAmount|uint256|Payout amount for manager
-|_evaluatorAmount|uint256|Payout amount for evaluator
-|_workerAmount|uint256|Payout amount for worker
-
-
 ### `setArbitrationRole`
 
 Set new colony arbitration role. Can be called by root role or architecture role.

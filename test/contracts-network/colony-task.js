@@ -51,7 +51,8 @@ import {
   setupFundedTask,
   makeTask,
   setupRandomColony,
-  assignRoles,
+  setPayouts,
+  assignRoles
 } from "../../helpers/test-data-generator";
 
 const { expect } = chai;
@@ -1293,7 +1294,16 @@ contract("ColonyTask", (accounts) => {
     it("should fail if it's not sufficiently funded to support all its payouts", async () => {
       await fundColonyWithTokens(colony, token, INITIAL_FUNDING);
       const taskId = await makeTask({ colonyNetwork, colony, token });
-      await colony.setAllTaskPayouts(taskId, token.address, MANAGER_PAYOUT, EVALUATOR_PAYOUT, WORKER_PAYOUT, { from: MANAGER });
+
+      await setPayouts({
+        colony,
+        taskId,
+        tokenAddress: token.address,
+        managerPayout: MANAGER_PAYOUT,
+        evaluatorPayout: EVALUATOR_PAYOUT,
+        workerPayout: WORKER_PAYOUT,
+        manager: MANAGER
+      });
       await assignRoles({ colony, taskId, manager: MANAGER, evaluator: EVALUATOR, worker: WORKER });
 
       await colony.submitTaskDeliverableAndRating(taskId, DELIVERABLE_HASH, RATING_1_SECRET, { from: WORKER });
@@ -1546,74 +1556,6 @@ contract("ColonyTask", (accounts) => {
       expect(taskPayoutWorker1).to.eq.BN(98000);
       const taskPayoutWorker2 = await colony.getTaskPayout(taskId, WORKER_ROLE, token.address);
       expect(taskPayoutWorker2).to.eq.BN(200);
-    });
-
-    it("should be able (if manager) to set all payments at once if evaluator and worker are manager or unassigned", async () => {
-      let dueDate = await currentBlockTime();
-      dueDate += SECONDS_PER_DAY * 7;
-
-      const taskId = await makeTask({ colony, dueDate });
-      await checkErrorRevert(
-        colony.setAllTaskPayouts(taskId, ethers.constants.AddressZero, 5000, 1000, 98000, { from: OTHER }),
-        "colony-task-role-identity-mismatch"
-      );
-      await colony.setAllTaskPayouts(taskId, ethers.constants.AddressZero, 5000, 1000, 98000);
-
-      const taskPayoutManager = await colony.getTaskPayout(taskId, MANAGER_ROLE, ethers.constants.AddressZero);
-      expect(taskPayoutManager).to.eq.BN(5000);
-
-      const taskPayoutEvaluator = await colony.getTaskPayout(taskId, EVALUATOR_ROLE, ethers.constants.AddressZero);
-      expect(taskPayoutEvaluator).to.eq.BN(1000);
-
-      const taskPayoutWorker = await colony.getTaskPayout(taskId, WORKER_ROLE, ethers.constants.AddressZero);
-      expect(taskPayoutWorker).to.eq.BN(98000);
-    });
-
-    it("should not be able to set all payments at once if worker is assigned and not manager", async () => {
-      let dueDate = await currentBlockTime();
-      dueDate += SECONDS_PER_DAY * 7;
-
-      const taskId = await makeTask({ colony, dueDate });
-
-      await executeSignedRoleAssignment({
-        colony,
-        taskId,
-        functionName: "setTaskWorkerRole",
-        signers: [MANAGER, WORKER],
-        sigTypes: [0, 0],
-        args: [taskId, WORKER],
-      });
-
-      await checkErrorRevert(colony.setAllTaskPayouts(taskId, ethers.constants.AddressZero, 5000, 1000, 98000), "colony-funding-worker-already-set");
-    });
-
-    it("should not be able to set all payments at once if evaluator is assigned and not manager", async () => {
-      let dueDate = await currentBlockTime();
-      dueDate += SECONDS_PER_DAY * 7;
-
-      const taskId = await makeTask({ colony, dueDate, evaluator: accounts[6] });
-      await executeSignedTaskChange({
-        colony,
-        taskId,
-        functionName: "removeTaskEvaluatorRole",
-        signers: [MANAGER],
-        sigTypes: [0],
-        args: [taskId],
-      });
-
-      await executeSignedRoleAssignment({
-        colony,
-        taskId,
-        functionName: "setTaskEvaluatorRole",
-        signers: [MANAGER, accounts[4]],
-        sigTypes: [0, 0],
-        args: [taskId, accounts[4]],
-      });
-
-      await checkErrorRevert(
-        colony.setAllTaskPayouts(taskId, ethers.constants.AddressZero, 5000, 1000, 98000),
-        "colony-funding-evaluator-already-set"
-      );
     });
 
     it("should log a TaskWorkerPayoutSet event, if the task's worker's payout changed", async () => {
