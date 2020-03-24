@@ -265,4 +265,7 @@ contract IReputationMiningCycle is ReputationMiningCycleDataTypes {
   /// @notice Returns the amount of CLNY given for defending a hash during the current dispute cycle
   /// @return uint256 The amount of CLNY given.
   function getDisputeRewardIncrement() public view returns (uint256 _reward);
+
+  function getResponsePossible(disputeStages stage, uint256 since) public view returns (bool possible);
+
 }

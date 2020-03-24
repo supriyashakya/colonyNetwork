@@ -73,7 +73,6 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     _;
   }
 
-  uint256 constant UINT256_MAX = 2**256 - 1;
   uint256 constant X = UINT256_MAX / MINING_WINDOW_SIZE;
 
   /// @notice A modifier that checks if the proposed entry is within the current allowable submission window
@@ -214,6 +213,8 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     // take it in to account when calculating the reward for responders, which in turn means that the
     // calculation can be done from a purely pairwise dispute perspective.
     require(submissionWindowClosed(), "colony-reputation-mining-submission-window-still-open");
+    require(responsePossible(disputeStages.CONFIRM_NEW_HASH, disputeRounds[roundNumber][0].lastResponseTimestamp), "colony-reputation-mining-user-ineligible-to-respond");
+
     // Burn tokens that have been slashed, but not awarded to others as rewards.
     ITokenLocking(tokenLockingAddress).burn(sub(stakeLost, rewardsPaidOut));
 
@@ -228,7 +229,8 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     selfdestruct(colonyNetworkAddress);
   }
 
-  function invalidateHash(uint256 round, uint256 idx) public {
+  function invalidateHash(uint256 round, uint256 idx) public
+  {
     // What we do depends on our opponent, so work out which index it was at in disputeRounds[round]
     uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
     uint256 nInNextRound;
@@ -278,7 +280,10 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
       require(disputeRounds[round][opponentIdx].challengeStepCompleted >= disputeRounds[round][idx].challengeStepCompleted, "colony-reputation-mining-less-challenge-rounds-completed");
 
       // Require that it has failed a challenge (i.e. failed to respond in time)
-      require(disputeRounds[round][idx].lastResponseTimestamp < now && sub(now, disputeRounds[round][idx].lastResponseTimestamp) >= 600, "colony-reputation-mining-not-timed-out"); // Timeout is ten minutes here.
+      require(disputeRounds[round][idx].lastResponseTimestamp < now && sub(now, disputeRounds[round][idx].lastResponseTimestamp) >= 600 + SUBMITTER_ONLY_WINDOW, "colony-reputation-mining-not-timed-out"); // Timeout is ten minutes here.
+
+      // The submission can be invalidated - now check the person invalidating is allowed to
+      require(responsePossible(disputeStages.INVALIDATE_HASH, disputeRounds[round][idx].lastResponseTimestamp), "colony-reputation-mining-user-ineligible-to-respond");
 
       // Work out whether we are invalidating just the supplied idx or its opponent too.
       bool eliminateOpponent = false;
@@ -328,80 +333,6 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     //TODO: Can we do some deleting to make calling this as cheap as possible for people?
   }
 
-  function respondToBinarySearchForChallenge(
-    uint256 round,
-    uint256 idx,
-    bytes memory jhIntermediateValue,
-    bytes32[] memory siblings
-  ) public
-  {
-    require(idx < disputeRounds[round].length, "colony-reputation-mining-index-beyond-round-length");
-    require(disputeRounds[round][idx].lowerBound != disputeRounds[round][idx].upperBound, "colony-reputation-mining-challenge-not-active");
-
-    uint256 targetNode = disputeRounds[round][idx].lowerBound;
-    bytes32 targetHashDuringSearch = disputeRounds[round][idx].targetHashDuringSearch;
-    bytes32 impliedRoot;
-    bytes32[2] memory lastSiblings;
-
-    Submission storage submission = reputationHashSubmissions[disputeRounds[round][idx].firstSubmitter];
-    // Check proof is the right length
-    uint256 expectedLength = expectedProofLength(submission.jrhNNodes, disputeRounds[round][idx].lowerBound) -
-      (disputeRounds[round][idx].challengeStepCompleted - 1); // We expect shorter proofs the more chanllenge rounds we've done so far
-    require(expectedLength == siblings.length, "colony-reputation-mining-invalid-binary-search-proof-length");
-    // Because branchmasks are used from the end, we can just get the whole branchmask. We will run out of siblings before we run out of
-    // branchmask, if everything is working right.
-    uint256 branchMask = expectedBranchMask(submission.jrhNNodes, disputeRounds[round][idx].lowerBound);
-
-    (impliedRoot, lastSiblings) = getFinalPairAndImpliedRootNoHash(
-      bytes32(targetNode),
-      jhIntermediateValue,
-      branchMask,
-      siblings
-    );
-    require(impliedRoot == targetHashDuringSearch, "colony-reputation-mining-invalid-binary-search-response");
-    // If require hasn't thrown, proof is correct.
-    // Process the consequences
-    processBinaryChallengeSearchResponse(round, idx, jhIntermediateValue, lastSiblings);
-    // Reward the user
-    rewardResponder(msg.sender);
-  }
-
-  function confirmBinarySearchResult(
-    uint256 round,
-    uint256 idx,
-    bytes memory jhIntermediateValue,
-    bytes32[] memory siblings
-  ) public
-  {
-    require(idx < disputeRounds[round].length, "colony-reputation-mining-index-beyond-round-length");
-    Submission storage submission = reputationHashSubmissions[disputeRounds[round][idx].firstSubmitter];
-    require(submission.jrhNNodes != 0, "colony-reputation-jrh-hash-not-verified");
-    require(disputeRounds[round][idx].lowerBound == disputeRounds[round][idx].upperBound, "colony-reputation-binary-search-incomplete");
-    require(
-      2**(disputeRounds[round][idx].challengeStepCompleted - 2) <= submission.jrhNNodes,
-      "colony-reputation-binary-search-result-already-confirmed"
-    );
-
-    uint256 targetNode = disputeRounds[round][idx].lowerBound;
-    uint256 branchMask = expectedBranchMask(submission.jrhNNodes, disputeRounds[round][idx].lowerBound);
-    bytes32 impliedRoot = getImpliedRootNoHashKey(bytes32(targetNode), jhIntermediateValue, branchMask, siblings);
-    require(impliedRoot == submission.jrh, "colony-reputation-mining-invalid-binary-search-confirmation");
-    bytes32 intermediateReputationHash;
-    uint256 intermediateReputationNNodes;
-    assembly {
-      intermediateReputationHash := mload(add(jhIntermediateValue, 0x20))
-      intermediateReputationNNodes := mload(add(jhIntermediateValue, 0x40))
-    }
-    disputeRounds[round][idx].intermediateReputationHash = intermediateReputationHash;
-    disputeRounds[round][idx].intermediateReputationNNodes = intermediateReputationNNodes;
-    while (2**(disputeRounds[round][idx].challengeStepCompleted - 2) <= submission.jrhNNodes) {
-      disputeRounds[round][idx].challengeStepCompleted += 1;
-    }
-    rewardResponder(msg.sender);
-
-    emit BinarySearchConfirmed(submission.proposedNewRootHash, submission.nNodes, submission.jrh, disputeRounds[round][idx].lowerBound);
-  }
-
   function confirmJustificationRootHash(
     uint256 round,
     uint256 index,
@@ -411,6 +342,7 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
   {
     require(submissionWindowClosed(), "colony-reputation-mining-cycle-submissions-not-closed");
     require(index < disputeRounds[round].length, "colony-reputation-mining-index-beyond-round-length");
+    require(responsePossible(disputeStages.CONFIRM_JRH, disputeRounds[round][index].lastResponseTimestamp), "colony-reputation-mining-user-ineligible-to-respond");
 
     // We reward the submitter for this, so we better have an opponent so that someone gets slashed and can pay for it
     uint256 opponentIdx = (index % 2 == 1 ? index-1 : index + 1);
@@ -552,6 +484,10 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     return reputationMiningWindowOpenTimestamp;
   }
 
+  function getResponsePossible(disputeStages stage, uint256 since) external view returns (bool) {
+    return responsePossible(stage, since);
+  }
+
   /////////////////////////
   // Internal functions
   /////////////////////////
@@ -560,77 +496,6 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     return now - reputationMiningWindowOpenTimestamp >= MINING_WINDOW_SIZE;
   }
 
-  function processBinaryChallengeSearchResponse(
-    uint256 round,
-    uint256 idx,
-    bytes memory jhIntermediateValue,
-    bytes32[2] memory lastSiblings
-  ) internal
-  {
-    disputeRounds[round][idx].lastResponseTimestamp = now;
-    disputeRounds[round][idx].challengeStepCompleted += 1;
-    // Save our intermediate hash
-    bytes32 intermediateReputationHash;
-    uint256 intermediateReputationNNodes;
-    assembly {
-      intermediateReputationHash := mload(add(jhIntermediateValue, 0x20))
-      intermediateReputationNNodes := mload(add(jhIntermediateValue, 0x40))
-    }
-    disputeRounds[round][idx].intermediateReputationHash = intermediateReputationHash;
-    disputeRounds[round][idx].intermediateReputationNNodes = intermediateReputationNNodes;
-
-    disputeRounds[round][idx].hash1 = lastSiblings[0];
-    disputeRounds[round][idx].hash2 = lastSiblings[1];
-
-    uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
-    if (disputeRounds[round][opponentIdx].challengeStepCompleted == disputeRounds[round][idx].challengeStepCompleted ) {
-      // Our opponent answered this challenge already.
-      // Compare our intermediateReputationHash to theirs to establish how to move the bounds.
-      processBinaryChallengeSearchStep(round, idx);
-    }
-  }
-
-  function processBinaryChallengeSearchStep(uint256 round, uint256 idx) internal {
-    uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
-    uint256 searchWidth = (disputeRounds[round][idx].upperBound - disputeRounds[round][idx].lowerBound) + 1;
-    uint256 searchWidthNextPowerOfTwo = nextPowerOfTwoInclusive(searchWidth);
-    if (
-      disputeRounds[round][opponentIdx].hash1 == disputeRounds[round][idx].hash1
-      )
-    {
-      disputeRounds[round][idx].lowerBound += searchWidthNextPowerOfTwo/2;
-      disputeRounds[round][opponentIdx].lowerBound += searchWidthNextPowerOfTwo/2;
-      disputeRounds[round][idx].targetHashDuringSearch = disputeRounds[round][idx].hash2;
-      disputeRounds[round][opponentIdx].targetHashDuringSearch = disputeRounds[round][opponentIdx].hash2;
-    } else {
-      disputeRounds[round][idx].upperBound -= (searchWidth - searchWidthNextPowerOfTwo/2);
-      disputeRounds[round][opponentIdx].upperBound -= (searchWidth - searchWidthNextPowerOfTwo/2);
-      disputeRounds[round][idx].targetHashDuringSearch = disputeRounds[round][idx].hash1;
-      disputeRounds[round][opponentIdx].targetHashDuringSearch = disputeRounds[round][opponentIdx].hash1;
-    }
-    // We need to keep the intermediate hashes so that we can figure out what type of dispute we are resolving later
-    // If the number of nodes in the reputation state are different, then we are disagreeing on whether this log entry
-    // corresponds to an existing reputation entry or not.
-    // If the hashes are different, then it's a calculation error.
-    // However, the intermediate hashes saved might not be the ones that correspond to the first disagreement, based on how exactly the last
-    // step of the binary challenge came to be.
-
-    // If complete, mark that the binary search is completed (but the intermediate hashes may or may not be correct) by setting
-    // challengeStepCompleted to the maximum it could be for the number of nodes we had to search through, plus one to indicate
-    // they've submitted their jrh
-    Submission storage submission = reputationHashSubmissions[disputeRounds[round][idx].firstSubmitter];
-    if (disputeRounds[round][idx].lowerBound == disputeRounds[round][idx].upperBound) {
-      if (2**(disputeRounds[round][idx].challengeStepCompleted-1) < submission.jrhNNodes) {
-        disputeRounds[round][idx].challengeStepCompleted += 1;
-        disputeRounds[round][opponentIdx].challengeStepCompleted += 1;
-      }
-    }
-
-    // Our opponent responded to this step of the challenge before we did, so we should
-    // reset their 'last response' time to now, as they aren't able to respond
-    // to the next challenge before they know what it is!
-    disputeRounds[round][opponentIdx].lastResponseTimestamp = now;
-  }
 
   function checkJRHProof1(bytes32 jrh, uint256 branchMask1, bytes32[] memory siblings1, uint256 reputationRootHashNNodes) internal view {
     // Proof 1 needs to prove that they started with the current reputation root hash
@@ -690,48 +555,6 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     startMemberOfPair(roundNumber, nInRound-2);
   }
 
-  function nextPowerOfTwoInclusive(uint256 v) private pure returns (uint) { // solium-disable-line security/no-assign-params
-    // Returns the next power of two, or v if v is already a power of two.
-    // Doesn't work for zero.
-    v = sub(v, 1);
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v |= v >> 32;
-    v |= v >> 64;
-    v |= v >> 128;
-    v = add(v, 1);
-    return v;
-  }
-
-  function expectedProofLength(uint256 nNodes, uint256 node) private pure returns (uint256) { // solium-disable-line security/no-assign-params
-    nNodes -= 1;
-    uint256 nextPowerOfTwo = nextPowerOfTwoInclusive(nNodes + 1);
-    uint256 layers = 0;
-    while (nNodes != 0 && (node+1 > nextPowerOfTwo / 2)) {
-      nNodes -= nextPowerOfTwo/2;
-      node -= nextPowerOfTwo/2;
-      layers += 1;
-      nextPowerOfTwo = nextPowerOfTwoInclusive(nNodes + 1);
-    }
-    while (nextPowerOfTwo > 1) {
-      layers += 1;
-      nextPowerOfTwo >>= 1;
-    }
-    return layers;
-  }
-
-  function expectedBranchMask(uint256 nNodes, uint256 node) public pure returns (uint256) {
-    // Gets the expected branchmask for a patricia tree which has nNodes, with keys from 0 to nNodes -1
-    // i.e. the tree is 'full' - there are no missing nodes
-    uint256 mask = sub(nNodes, 1); // Every branchmask in a full tree has at least these 1s set
-    uint256 xored = mask ^ node; // Where do mask and node differ?
-    // Set every bit in the mask from the first bit where they differ to 1
-    uint256 remainderMask = sub(nextPowerOfTwoInclusive(add(xored, 1)), 1);
-    return mask | remainderMask;
-  }
 
   function userInvolvedInMiningCycle(address _user) public view returns (bool) {
     if (
