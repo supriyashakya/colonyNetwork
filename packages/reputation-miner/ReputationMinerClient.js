@@ -378,7 +378,7 @@ class ReputationMinerClient {
         // Has our opponent timed out?
         // TODO: Remove these magic numbers
         const opponentTimeout = ethers.utils.bigNumberify(block.timestamp).sub(oppEntry.lastResponseTimestamp).gte(600 + 600);
-        const responsePossible = await repCycle.getResponsePossible(disputeStages.INVALIDATE_HASH, oppEntry.lastResponseTimestamp);
+        let responsePossible = await repCycle.getResponsePossible(disputeStages.INVALIDATE_HASH, oppEntry.lastResponseTimestamp);
         if (opponentTimeout && responsePossible){
           // If so, invalidate them.
           await this.updateGasEstimate('safeLow');
@@ -391,7 +391,7 @@ class ReputationMinerClient {
         // Our opponent hasn't timed out yet. We should check if we can respond to something though
         // 1. Do we still need to confirm JRH?
         if (submission.jrhNNodes.eq(0)) {
-          const responsePossible = await repCycle.getResponsePossible(disputeStages.CONFIRM_JRH, entry.lastResponseTimestamp);
+          responsePossible = await repCycle.getResponsePossible(disputeStages.CONFIRM_JRH, entry.lastResponseTimestamp);
           console.log(responsePossible, entry.lastResponseTimestamp, block.timestamp.toString())
 
           if (responsePossible){
@@ -405,7 +405,7 @@ class ReputationMinerClient {
           // We can respond if neither of us have responded to this stage yet or
           // if they have responded already
           if (oppEntry.challengeStepCompleted.gte(entry.challengeStepCompleted)) {
-            const responsePossible = await repCycle.getResponsePossible(disputeStages.BINARY_SEARCH_RESPONSE, entry.lastResponseTimestamp);
+            responsePossible = await repCycle.getResponsePossible(disputeStages.BINARY_SEARCH_RESPONSE, entry.lastResponseTimestamp);
             if (responsePossible){
               await this.updateGasEstimate('fast');
               await this._miner.respondToBinarySearchForChallenge();
@@ -419,7 +419,7 @@ class ReputationMinerClient {
           ethers.utils.bigNumberify(2).pow(entry.challengeStepCompleted.sub(2)).lte(submission.jrhNNodes)
         )
         {
-          const responsePossible = await repCycle.getResponsePossible(disputeStages.BINARY_SEARCH_CONFIRM, entry.lastResponseTimestamp);
+          responsePossible = await repCycle.getResponsePossible(disputeStages.BINARY_SEARCH_CONFIRM, entry.lastResponseTimestamp);
           if (responsePossible){
             await this.updateGasEstimate('fast');
             await this._miner.confirmBinarySearchResult();
@@ -432,7 +432,7 @@ class ReputationMinerClient {
             ethers.utils.bigNumberify(2).pow(entry.challengeStepCompleted.sub(3)).lte(submission.jrhNNodes)
           )
         {
-          const responsePossible = await repCycle.getResponsePossible(disputeStages.RESPOND_TO_CHALLENGE, entry.lastResponseTimestamp);
+          responsePossible = await repCycle.getResponsePossible(disputeStages.RESPOND_TO_CHALLENGE, entry.lastResponseTimestamp);
           if (responsePossible){
             await this.updateGasEstimate('fast');
             await this._miner.respondToChallenge();

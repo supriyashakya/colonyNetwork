@@ -8,7 +8,15 @@ import { TruffleLoader } from "@colony/colony-js-contract-loader-fs";
 
 import { setupColonyNetwork, setupMetaColonyWithLockedCLNYToken, giveUserCLNYTokensAndStake } from "../../helpers/test-data-generator";
 
-import { MINING_CYCLE_DURATION, MINING_CYCLE_TIMEOUT, DEFAULT_STAKE, REWARD, UINT256_MAX, MIN_STAKE, SUBMITTER_ONLY_WINDOW } from "../../helpers/constants";
+import {
+  MINING_CYCLE_DURATION,
+  MINING_CYCLE_TIMEOUT,
+  DEFAULT_STAKE,
+  REWARD,
+  UINT256_MAX,
+  MIN_STAKE,
+  SUBMITTER_ONLY_WINDOW
+} from "../../helpers/constants";
 
 import {
   forwardTime,
