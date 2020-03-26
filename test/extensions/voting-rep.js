@@ -106,21 +106,21 @@ contract("Voting Reputation", accounts => {
     await colony.setArbitrationRole(1, 0, voting.address, 1, true);
     await colony.setAdministrationRole(1, 0, voting.address, 1, true);
 
-    await token.mint(USER0, WAD);
-    await token.mint(USER1, WAD);
-    await token.mint(USER2, WAD);
-    await token.approve(tokenLocking.address, WAD, { from: USER0 });
-    await token.approve(tokenLocking.address, WAD, { from: USER1 });
-    await token.approve(tokenLocking.address, WAD, { from: USER2 });
-    await tokenLocking.deposit(token.address, WAD, true, { from: USER0 });
-    await tokenLocking.deposit(token.address, WAD, true, { from: USER1 });
-    await tokenLocking.deposit(token.address, WAD, true, { from: USER2 });
-    await colony.approveStake(voting.address, 1, WAD, { from: USER0 });
-    await colony.approveStake(voting.address, 1, WAD, { from: USER1 });
-    await colony.approveStake(voting.address, 1, WAD, { from: USER2 });
-    await tokenLocking.approveStake(colony.address, WAD, { from: USER0 });
-    await tokenLocking.approveStake(colony.address, WAD, { from: USER1 });
-    await tokenLocking.approveStake(colony.address, WAD, { from: USER2 });
+    // await token.mint(USER0, WAD);
+    // await token.mint(USER1, WAD);
+    // await token.mint(USER2, WAD);
+    // await token.approve(tokenLocking.address, WAD, { from: USER0 });
+    // await token.approve(tokenLocking.address, WAD, { from: USER1 });
+    // await token.approve(tokenLocking.address, WAD, { from: USER2 });
+    // await tokenLocking.deposit(token.address, WAD, true, { from: USER0 });
+    // await tokenLocking.deposit(token.address, WAD, true, { from: USER1 });
+    // await tokenLocking.deposit(token.address, WAD, true, { from: USER2 });
+    // await colony.approveStake(voting.address, 1, WAD, { from: USER0 });
+    // await colony.approveStake(voting.address, 1, WAD, { from: USER1 });
+    // await colony.approveStake(voting.address, 1, WAD, { from: USER2 });
+    // await tokenLocking.approveStake(colony.address, WAD, { from: USER0 });
+    // await tokenLocking.approveStake(colony.address, WAD, { from: USER1 });
+    // await tokenLocking.approveStake(colony.address, WAD, { from: USER2 });
 
     reputationTree = new PatriciaTree();
     await reputationTree.insert(
@@ -598,7 +598,7 @@ contract("Voting Reputation", accounts => {
     });
   });
 
-  describe("claiming staker rewards", async () => {
+  describe.skip("claiming staker rewards", async () => {
     let pollId;
 
     beforeEach(async () => {

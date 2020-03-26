@@ -151,8 +151,8 @@ contract VotingReputation is DSMath, PatriciaTreeProofs {
     require(pollState == PollState.StakeYay || pollState == PollState.StakeNay, "voting-rep-staking-closed");
     require(_vote || pollState == PollState.StakeNay, "voting-rep-out-of-order");
 
-    colony.obligateStake(msg.sender, _domainId, _amount);
-    colony.slashStake(_permissionDomainId, _childSkillIndex, address(this), msg.sender, _domainId, _amount, address(this));
+    // colony.obligateStake(msg.sender, _domainId, _amount);
+    // colony.slashStake(_permissionDomainId, _childSkillIndex, address(this), msg.sender, _domainId, _amount, address(this));
 
     polls[_pollId].stakes[toInt(_vote)] = add(polls[_pollId].stakes[toInt(_vote)], _amount);
     stakers[_pollId][msg.sender][_vote] = add(stakers[_pollId][msg.sender][_vote], _amount);
@@ -164,7 +164,7 @@ contract VotingReputation is DSMath, PatriciaTreeProofs {
 
     // If all stakes are in, claim the pending tokens
     if (polls[_pollId].stakes[NAY] == getRequiredStake(_pollId)) {
-      tokenLocking.claim(token, true);
+      // tokenLocking.claim(token, true);
     }
 
     emit PollStaked(_pollId, msg.sender, _vote, _amount);
@@ -211,7 +211,7 @@ contract VotingReputation is DSMath, PatriciaTreeProofs {
     uint256 voterReward = wmul(wmul(pctReputation, totalStake), VOTER_REWARD_PCT);
 
     poll.voterComp = sub(poll.voterComp, voterReward);
-    tokenLocking.transfer(token, voterReward, msg.sender, true);
+    // tokenLocking.transfer(token, voterReward, msg.sender, true);
 
     emit PollVoteRevealed(_pollId, msg.sender, _vote);
   }
@@ -254,7 +254,7 @@ contract VotingReputation is DSMath, PatriciaTreeProofs {
     uint256 stakerReward = wmul(voterRewardStake, winShare);
 
     delete stakers[_pollId][msg.sender][_vote];
-    tokenLocking.transfer(token, stakerReward, msg.sender, true);
+    // tokenLocking.transfer(token, stakerReward, msg.sender, true);
 
     emit PollRewardClaimed(_pollId, msg.sender,_vote, stakerReward);
   }
@@ -265,8 +265,8 @@ contract VotingReputation is DSMath, PatriciaTreeProofs {
     uint256 voterComp = polls[_pollId].voterComp;
     delete polls[_pollId].voterComp;
 
-    tokenLocking.withdraw(token, voterComp, true);
-    require(ERC20Extended(token).transfer(address(colony), voterComp), "voting-rep-colony-transfer-failed");
+    // tokenLocking.withdraw(token, voterComp, true);
+    // require(ERC20Extended(token).transfer(address(colony), voterComp), "voting-rep-colony-transfer-failed");
 
     emit PollColonyRewardClaimed(_pollId, voterComp);
   }
