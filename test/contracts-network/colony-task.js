@@ -52,7 +52,7 @@ import {
   makeTask,
   setupRandomColony,
   setPayouts,
-  assignRoles
+  assignRoles,
 } from "../../helpers/test-data-generator";
 
 const { expect } = chai;
@@ -1302,7 +1302,7 @@ contract("ColonyTask", (accounts) => {
         managerPayout: MANAGER_PAYOUT,
         evaluatorPayout: EVALUATOR_PAYOUT,
         workerPayout: WORKER_PAYOUT,
-        manager: MANAGER
+        manager: MANAGER,
       });
       await assignRoles({ colony, taskId, manager: MANAGER, evaluator: EVALUATOR, worker: WORKER });
 

@@ -69,7 +69,7 @@ export async function setPayouts({ colony, taskId, tokenAddress, managerPayout, 
     functionName: "setTaskManagerPayout",
     signers: [manager],
     sigTypes: [0],
-    args: [taskId, tokenAddress, managerPayout]
+    args: [taskId, tokenAddress, managerPayout],
   });
 
   await executeSignedTaskChange({
@@ -78,7 +78,7 @@ export async function setPayouts({ colony, taskId, tokenAddress, managerPayout, 
     functionName: "setTaskEvaluatorPayout",
     signers: [manager],
     sigTypes: [0],
-    args: [taskId, tokenAddress, evaluatorPayout]
+    args: [taskId, tokenAddress, evaluatorPayout],
   });
 
   await executeSignedTaskChange({
@@ -87,7 +87,7 @@ export async function setPayouts({ colony, taskId, tokenAddress, managerPayout, 
     functionName: "setTaskWorkerPayout",
     signers: [manager],
     sigTypes: [0],
-    args: [taskId, tokenAddress, workerPayout]
+    args: [taskId, tokenAddress, workerPayout],
   });
 }
 
