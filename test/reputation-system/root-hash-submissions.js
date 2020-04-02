@@ -21,7 +21,7 @@ import {
   finishReputationMiningCycle,
   runBinarySearch,
   checkErrorRevertEthers,
-  currentBlock
+  currentBlock,
 } from "../../helpers/test-helper";
 
 import ReputationMinerTestWrapper from "../../packages/reputation-miner/test/ReputationMinerTestWrapper";

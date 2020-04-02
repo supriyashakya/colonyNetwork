@@ -230,7 +230,7 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
 
   function invalidateHash(uint256 round, uint256 idx) public {
     // What we do depends on our opponent, so work out which index it was at in disputeRounds[round]
-    uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
+    uint256 opponentIdx = opponentIdx(idx);
     uint256 nInNextRound;
 
     // We require either
@@ -278,7 +278,7 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
       require(disputeRounds[round][opponentIdx].challengeStepCompleted >= disputeRounds[round][idx].challengeStepCompleted, "colony-reputation-mining-less-challenge-rounds-completed");
 
       // Require that it has failed a challenge (i.e. failed to respond in time)
-      require(disputeRounds[round][idx].lastResponseTimestamp < now && sub(now, disputeRounds[round][idx].lastResponseTimestamp) >= 600, "colony-reputation-mining-not-timed-out"); // Timeout is ten minutes here.
+      require(add(disputeRounds[round][idx].lastResponseTimestamp, 600) <= now, "colony-reputation-mining-not-timed-out"); // Timeout is ten minutes here.
 
       // Work out whether we are invalidating just the supplied idx or its opponent too.
       bool eliminateOpponent = false;
@@ -411,10 +411,6 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
   {
     require(submissionWindowClosed(), "colony-reputation-mining-cycle-submissions-not-closed");
     require(index < disputeRounds[round].length, "colony-reputation-mining-index-beyond-round-length");
-
-    // We reward the submitter for this, so we better have an opponent so that someone gets slashed and can pay for it
-    uint256 opponentIdx = (index % 2 == 1 ? index-1 : index + 1);
-    require(opponentIdx < disputeRounds[round].length, "colony-reputation-mining-no-opponent-yet");
 
     Submission storage submission = reputationHashSubmissions[disputeRounds[round][index].firstSubmitter];
     // Require we've not confirmed the JRH already.
@@ -552,6 +548,10 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     return reputationMiningWindowOpenTimestamp;
   }
 
+  function getDisputeRewardSize() public view returns (uint256) {
+    return disputeRewardSize();
+  }
+
   /////////////////////////
   // Internal functions
   /////////////////////////
@@ -582,7 +582,7 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     disputeRounds[round][idx].hash1 = lastSiblings[0];
     disputeRounds[round][idx].hash2 = lastSiblings[1];
 
-    uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
+    uint256 opponentIdx = opponentIdx(idx);
     if (disputeRounds[round][opponentIdx].challengeStepCompleted == disputeRounds[round][idx].challengeStepCompleted ) {
       // Our opponent answered this challenge already.
       // Compare our intermediateReputationHash to theirs to establish how to move the bounds.
@@ -591,7 +591,7 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
   }
 
   function processBinaryChallengeSearchStep(uint256 round, uint256 idx) internal {
-    uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
+    uint256 opponentIdx = opponentIdx(idx);
     uint256 searchWidth = (disputeRounds[round][idx].upperBound - disputeRounds[round][idx].lowerBound) + 1;
     uint256 searchWidthNextPowerOfTwo = nextPowerOfTwoInclusive(searchWidth);
     if (
@@ -723,6 +723,10 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
     return layers;
   }
 
+  function opponentIdx(uint256 _idx) private pure returns (uint256) {
+    return _idx % 2 == 1 ? _idx - 1 : _idx + 1;
+  }
+
   function expectedBranchMask(uint256 nNodes, uint256 node) public pure returns (uint256) {
     // Gets the expected branchmask for a patricia tree which has nNodes, with keys from 0 to nNodes -1
     // i.e. the tree is 'full' - there are no missing nodes
@@ -734,12 +738,6 @@ contract ReputationMiningCycle is ReputationMiningCycleCommon {
   }
 
   function userInvolvedInMiningCycle(address _user) public view returns (bool) {
-    if (
-      reputationHashSubmissions[_user].proposedNewRootHash != 0x00 ||
-      respondedToChallenge[_user] == true
-    ) {
-      return true;
-    }
-    return false;
+    return reputationHashSubmissions[_user].proposedNewRootHash != 0x00 || respondedToChallenge[_user];
   }
 }
