@@ -730,4 +730,9 @@ contract IColony is ColonyDataTypes, IRecovery {
   /// @param _token Address of the token, `0x0` value indicates Ether
   /// @return amount Total amount of tokens in funding pots other than the rewards pot (id 0)
   function getNonRewardPotsTotal(address _token) public view returns (uint256 amount);
+
+  /// @notice Get the domain corresponding to a funding pot
+  /// @param _fundingPotId Id of the funding pot
+  /// @return domainId Id of the corresponding domain
+  function getDomainFromFundingPot(uint256 _fundingPotId) public view returns (uint256 domainId);
 }
